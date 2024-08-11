@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Permutasiya kalkulyatoru</title>
+    <style>
+        /* Ümumi ayarlar */
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f9;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        /* Container ayarları */
+        .container {
+            background: #fff;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            max-width: 500px;
+            width: 100%;
+            text-align: center;
+        }
+
+        /* Başlıq ayarları */
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 24px;
+        }
+
+        /* Input sahesi */
+        .input-group {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .input-field {
+            flex: 1;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+
+        .add-btn, .calculate-btn, .remove-btn {
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            color: #fff;
+            font-size: 16px;
+            padding: 10px 20px;
+            margin: 5px;
+        }
+
+        .add-btn {
+            background-color: #28a745;
+        }
+
+        .calculate-btn {
+            background-color: #007bff;
+        }
+
+        .remove-btn {
+            background-color: #dc3545;
+            margin-left: 10px;
+        }
+
+        .add-btn:hover, .calculate-btn:hover, .remove-btn:hover {
+            opacity: 0.9;
+        }
+
+        #inputs-container {
+            margin-bottom: 20px;
+        }
+
+        /* Yükleme çubuğu stil ayarları */
+        .progress-container {
+            margin-top: 20px;
+            text-align: center;
+            display: none;
+        }
+
+        .progress-bar {
+            width: 100%;
+            background-color: #ddd;
+            border-radius: 5px;
+            overflow: hidden;
+            position: relative;
+            height: 20px;
+        }
+
+        .progress-bar span {
+            display: block;
+            height: 100%;
+            background-color: #007bff;
+            width: 0;
+            transition: width 0.3s;
+        }
+
+        .progress-text {
+            margin-top: 10px;
+            font-size: 16px;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Permutasiya kalkulyatoru</h1>
+        <div id="inputs-container">
+            <!-- Start sehifesi -->
+            <div class="input-group">
+                <input type="text" name="word" placeholder="söz 1" class="input-field" onkeydown="handleEnter(event)">
+                <button onclick="removeInput(this)" class="remove-btn">×</button>
+            </div>
+        </div>
+        <button onclick="addInput()" class="add-btn">+ Söz əlavə et</button>
+        <button onclick="generatePermutations()" class="calculate-btn">Hesabla</button>
+
+        <!-- Yükleme çubuğu -->
+        <div class="progress-container" id="progress-container">
+            <div class="progress-bar">
+                <span id="progress-bar"></span>
+            </div>
+            <div class="progress-text" id="progress-text">0% Tamamlandı</div>
+        </div>
+    </div>
+    <script>
+        function addInput() {
+            const container = document.getElementById('inputs-container');
+            const inputGroup = document.createElement('div');
+            inputGroup.className = 'input-group';
+            
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.name = 'word';
+            input.placeholder = 'Yeni söz';
+            input.className = 'input-field';
+            input.onkeydown = handleEnter;
+            
+            const removeBtn = document.createElement('button');
+            removeBtn.className = 'remove-btn';
+            removeBtn.innerText = '×';
+            removeBtn.onclick = function() {
+                container.removeChild(inputGroup);
+            };
+            
+            inputGroup.appendChild(input);
+            inputGroup.appendChild(removeBtn);
+            container.appendChild(inputGroup);
+            
+            // Focus yeni inputa
+            input.focus();
+        }
+
+        function handleEnter(event) {
+            if (event.key === 'Enter') {
+                event.preventDefault();  // Formun gönderilmesini blokla
+                addInput();  // Yeni input elave et
+            }
+        }
+
+        async function generatePermutations() {
+            const words = Array.from(document.querySelectorAll('input[name="word"]')).map(input => input.value.trim()).filter(value => value);
+            
+            if (words.length === 0) {
+                alert('Ən az 1 söz əlavə et');
+                return;
+            }
+
+            // Yükleme çubuğunu göster
+            document.getElementById('progress-container').style.display = 'block';
+            const progressBar = document.getElementById('progress-bar');
+            const progressText = document.getElementById('progress-text');
+            progressBar.style.width = '0%';
+            progressText.textContent = '0% Tamamlandı';
+
+            try {
+                const response = await fetch('http://localhost:3030/generate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ words })
+                });
+
+                if (response.ok) {
+                    const totalSize = parseInt(response.headers.get('Content-Length'), 10);
+                    let loadedSize = 0;
+
+                    const reader = response.body.getReader();
+                    const contentLength = totalSize;
+                    const chunks = [];
+                    let progress = 0;
+
+                    reader.read().then(function processText({ done, value }) {
+                        if (done) {
+                            // Tamamlandıqda faylı endir
+                            const blob = new Blob(chunks);
+                            const url = window.URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.href = url;
+                            a.download = 'permutations.txt';
+                            a.click();
+                            window.URL.revokeObjectURL(url);
+
+                            // Yükleme çubuğunu %100 tamamlandı olarak göster
+                            progressBar.style.width = '100%';
+                            progressText.textContent = '100% Tamamlandı';
+                            return;
+                        }
+
+                        loadedSize += value.length;
+                        chunks.push(value);
+                        progress = Math.round((loadedSize / contentLength) * 100);
+                        progressBar.style.width = `${progress}%`;
+                        progressText.textContent = `${progress}% Tamamlandı`;
+
+                        return reader.read().then(processText);
+                    });
+                } else {
+                    alert('Xəta.');
+                }
+            } catch (error) {
+                alert('Xəta: ' + error.message);
+            }
+        }
+
+        function removeInput(button) {
+            const container = document.getElementById('inputs-container');
+            container.removeChild(button.parentElement);
+        }
+    </script>
+</body>
+</html>
