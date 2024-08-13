@@ -184,7 +184,7 @@
             progressText.textContent = '0% Tamamlandı';
 
             try {
-                const response = await fetch('https://peymanhasanov.github.io/word-combination-repo/generate', {
+                const response = await fetch('http://localhost:3030/generate', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
